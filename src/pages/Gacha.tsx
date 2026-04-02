@@ -1,25 +1,24 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/Button';
-import { CardDisplay } from '@/components/CardDisplay';
+import { AbilityDisplay, AbilityDetailModal } from '@/components/AbilityDisplay';
 import { Modal } from '@/components/Modal';
-import { getGachaCost, GACHA_RATES } from '@/utils/gacha';
-import type { Card } from '@/types/card';
+import type { Ability } from '@/types/ability';
 import { Sparkles, Gem, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 export function Gacha() {
   const navigate = useNavigate();
   const { player, doGacha } = useGameStore();
   const [isPulling, setIsPulling] = useState(false);
-  const [results, setResults] = useState<Card[]>([]);
+  const [results, setResults] = useState<Ability[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [selectedAbility, setSelectedAbility] = useState<Ability | null>(null);
   
   const handlePull = async (count: number) => {
-    const cost = getGachaCost(count);
-    if (player.gems < cost.gems) {
+    const cost = count === 1 ? 50 : count === 10 ? 450 : count * 50;
+    if (player.gems < cost) {
       alert('钻石不足！');
       return;
     }
@@ -29,26 +28,17 @@ export function Gacha() {
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const cards = doGacha(count);
-    if (cards) {
-      setResults(cards);
+    const abilities = doGacha(count);
+    if (abilities) {
+      setResults(abilities);
       setShowResults(true);
     }
     
     setIsPulling(false);
   };
   
-  const getRarityColor = (rarity: Card['rarity']) => {
-    switch (rarity) {
-      case 'SSR': return 'text-yellow-400';
-      case 'SR': return 'text-purple-400';
-      case 'R': return 'text-blue-400';
-      default: return 'text-gray-400';
-    }
-  };
-  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900">
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
       
       <div className="relative z-10 container mx-auto px-4 py-8">
@@ -65,8 +55,8 @@ export function Gacha() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl font-bold text-white mb-2">召唤祭坛</h1>
-          <p className="text-gray-400">消耗钻石召唤强力卡片</p>
+          <h1 className="text-4xl font-bold text-white mb-2">能力祭坛</h1>
+          <p className="text-gray-400">消耗钻石抽取随机能力</p>
         </motion.div>
         
         <div className="flex justify-center gap-4 mb-8">
@@ -89,7 +79,7 @@ export function Gacha() {
             >
               <div className="text-center">
                 <Sparkles className="w-16 h-16 text-white mx-auto mb-4" />
-                <p className="text-white text-lg font-bold">神秘卡包</p>
+                <p className="text-white text-lg font-bold">神秘能力</p>
               </div>
             </motion.div>
             
@@ -112,7 +102,7 @@ export function Gacha() {
               className="min-w-32"
             >
               单抽 x1
-              <span className="ml-2 text-sm opacity-80">100💎</span>
+              <span className="ml-2 text-sm opacity-80">50💎</span>
             </Button>
             <Button
               onClick={() => handlePull(10)}
@@ -122,7 +112,7 @@ export function Gacha() {
               className="min-w-32"
             >
               十连 x10
-              <span className="ml-2 text-sm opacity-80">900💎</span>
+              <span className="ml-2 text-sm opacity-80">450💎</span>
             </Button>
           </div>
         </motion.div>
@@ -133,20 +123,28 @@ export function Gacha() {
           transition={{ delay: 0.3 }}
           className="mt-12 bg-gray-800/50 rounded-xl p-6 backdrop-blur-sm border border-gray-700"
         >
-          <h3 className="text-lg font-bold text-white mb-4">召唤概率</h3>
+          <h3 className="text-lg font-bold text-white mb-4">抽取概率</h3>
           <div className="grid grid-cols-4 gap-4">
-            {Object.entries(GACHA_RATES).map(([rarity, rate]) => (
-              <div key={rarity} className="text-center">
-                <div className={`text-2xl font-bold ${getRarityColor(rarity as Card['rarity'])}`}>
-                  {rarity}
-                </div>
-                <div className="text-gray-400">{rate}%</div>
-              </div>
-            ))}
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-300">普通</div>
+              <div className="text-gray-400">60%</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-300">稀有</div>
+              <div className="text-gray-400">25%</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-300">史诗</div>
+              <div className="text-gray-400">12%</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-300">传说</div>
+              <div className="text-gray-400">3%</div>
+            </div>
           </div>
           <div className="mt-4 text-sm text-gray-400">
-            <p>• SR保底：每10抽必出SR或以上卡片</p>
-            <p>• SSR保底：每50抽必出SSR卡片</p>
+            <p>• 史诗保底：每10抽必出史诗或传说能力</p>
+            <p>• 传说保底：每30抽必出传说能力</p>
           </div>
         </motion.div>
       </div>
@@ -154,21 +152,21 @@ export function Gacha() {
       <Modal
         isOpen={showResults}
         onClose={() => setShowResults(false)}
-        title="召唤结果"
+        title="抽取结果"
       >
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto">
           <AnimatePresence>
-            {results.map((card, index) => (
+            {results.map((ability, index) => (
               <motion.div
-                key={`${card.id}-${index}`}
+                key={`${ability.id}-${index}`}
                 initial={{ opacity: 0, scale: 0.5, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <CardDisplay
-                  card={card}
+                <AbilityDisplay
+                  ability={ability}
                   size="sm"
-                  onClick={() => setSelectedCard(card)}
+                  onClick={() => setSelectedAbility(ability)}
                 />
               </motion.div>
             ))}
@@ -179,10 +177,10 @@ export function Gacha() {
         </div>
       </Modal>
       
-      {selectedCard && (
-        <CardDisplay
-          card={selectedCard}
-          onClick={() => setSelectedCard(null)}
+      {selectedAbility && (
+        <AbilityDetailModal
+          ability={selectedAbility}
+          onClose={() => setSelectedAbility(null)}
         />
       )}
     </div>

@@ -1,66 +1,76 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GameState, OwnedCard, PlayerState, ActiveBond } from '@/types/game';
-import type { Card } from '@/types/card';
-import { cardDatabase } from '@/data/cards';
-import { detectBonds, calculateTotalPower } from '@/utils/bondCalculator';
-import { performGacha, getGachaCost } from '@/utils/gacha';
+import type { Ability, ActiveAbility, AbilitySynergy, CalculatedStats } from '@/types/ability';
+import { calculateStats, calculatePower, rollGacha } from '@/utils/abilityEngine';
 
-const STORAGE_KEY = 'card-game-state';
+const STORAGE_KEY = 'ability-game-state';
 
-const initialPlayer: PlayerState = {
-  level: 1,
-  exp: 0,
-  expToNext: 100,
-  gold: 500,
-  gems: 500,
-  energy: 100,
-  maxEnergy: 100
-};
-
-const initialCards: OwnedCard[] = [
-  { ...cardDatabase[12], instanceId: 'starter_1', level: 1 },
-  { ...cardDatabase[13], instanceId: 'starter_2', level: 1 },
-  { ...cardDatabase[14], instanceId: 'starter_3', level: 1 }
-];
-
-interface GameStore extends GameState {
+interface GameState {
+  player: {
+    level: number;
+    exp: number;
+    expToNext: number;
+    gold: number;
+    gems: number;
+  };
+  ownedAbilities: Ability[];
+  activeAbilities: ActiveAbility[];
+  unlockedStages: string[];
+  completedStages: string[];
+  gacha: {
+    pityEpic: number;
+    pityLegendary: number;
+    totalPulls: number;
+  };
+  stats: CalculatedStats;
+  conflicts: string[];
+  synergies: AbilitySynergy[];
+  power: number;
+  
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
   addGems: (amount: number) => void;
-  addCard: (card: Card) => void;
-  removeCard: (instanceId: string) => void;
-  setDeck: (cardIds: string[]) => void;
-  addToDeck: (instanceId: string) => void;
-  removeFromDeck: (instanceId: string) => void;
+  addAbility: (ability: Ability) => void;
+  removeAbility: (abilityId: string) => void;
+  setActiveAbilities: (abilityIds: string[]) => void;
+  activateAbility: (abilityId: string) => void;
+  deactivateAbility: (abilityId: string) => void;
   unlockStage: (stageId: string) => void;
   completeStage: (stageId: string, stars: number) => void;
-  doGacha: (count: number) => Card[] | null;
-  updateActiveBonds: () => void;
-  getDeckCards: () => OwnedCard[];
-  getTotalPower: () => number;
+  doGacha: (count: number) => Ability[] | null;
+  updateStats: () => void;
   resetGame: () => void;
 }
 
-const initialState: GameState = {
-  player: initialPlayer,
-  ownedCards: initialCards,
-  deck: initialCards.map(c => c.instanceId),
+const initialState: Omit<GameState, 'stats' | 'conflicts' | 'synergies' | 'power' | keyof Omit<GameState, 'player' | 'ownedAbilities' | 'activeAbilities' | 'unlockedStages' | 'completedStages' | 'gacha'>> = {
+  player: {
+    level: 1,
+    exp: 0,
+    expToNext: 100,
+    gold: 500,
+    gems: 300
+  },
+  ownedAbilities: [],
+  activeAbilities: [],
   unlockedStages: ['stage_001'],
   completedStages: [],
-  stageStars: {},
   gacha: {
-    pitySR: 0,
-    pitySSR: 0,
+    pityEpic: 0,
+    pityLegendary: 0,
     totalPulls: 0
-  },
-  activeBonds: []
+  }
 };
 
-export const useGameStore = create<GameStore>()(
+const initialCalculation = calculateStats([]);
+
+export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       ...initialState,
+      stats: initialCalculation.stats,
+      conflicts: initialCalculation.conflicts,
+      synergies: initialCalculation.synergies,
+      power: calculatePower(initialCalculation.stats),
       
       addExp: (amount: number) => {
         set(state => {
@@ -97,41 +107,55 @@ export const useGameStore = create<GameStore>()(
         }));
       },
       
-      addCard: (card: Card) => {
-        const instanceId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const ownedCard: OwnedCard = { ...card, instanceId, level: 1 };
-        set(state => ({
-          ownedCards: [...state.ownedCards, ownedCard]
-        }));
-      },
-      
-      removeCard: (instanceId: string) => {
-        set(state => ({
-          ownedCards: state.ownedCards.filter(c => c.instanceId !== instanceId),
-          deck: state.deck.filter(id => id !== instanceId)
-        }));
-      },
-      
-      setDeck: (cardIds: string[]) => {
-        set({ deck: cardIds.slice(0, 5) });
-        get().updateActiveBonds();
-      },
-      
-      addToDeck: (instanceId: string) => {
+      addAbility: (ability: Ability) => {
         set(state => {
-          if (state.deck.length >= 5 || state.deck.includes(instanceId)) {
+          if (state.ownedAbilities.find(a => a.id === ability.id)) {
             return state;
           }
-          return { deck: [...state.deck, instanceId] };
+          return {
+            ownedAbilities: [...state.ownedAbilities, ability]
+          };
         });
-        get().updateActiveBonds();
       },
       
-      removeFromDeck: (instanceId: string) => {
+      removeAbility: (abilityId: string) => {
         set(state => ({
-          deck: state.deck.filter(id => id !== instanceId)
+          ownedAbilities: state.ownedAbilities.filter(a => a.id !== abilityId),
+          activeAbilities: state.activeAbilities.filter(a => a.ability.id !== abilityId)
         }));
-        get().updateActiveBonds();
+        get().updateStats();
+      },
+      
+      setActiveAbilities: (abilityIds: string[]) => {
+        set(state => ({
+          activeAbilities: state.ownedAbilities
+            .filter(a => abilityIds.includes(a.id))
+            .slice(0, 6)
+            .map(a => ({ ability: a, level: 1 }))
+        }));
+        get().updateStats();
+      },
+      
+      activateAbility: (abilityId: string) => {
+        set(state => {
+          if (state.activeAbilities.length >= 6) return state;
+          if (state.activeAbilities.find(a => a.ability.id === abilityId)) return state;
+          
+          const ability = state.ownedAbilities.find(a => a.id === abilityId);
+          if (!ability) return state;
+          
+          return {
+            activeAbilities: [...state.activeAbilities, { ability, level: 1 }]
+          };
+        });
+        get().updateStats();
+      },
+      
+      deactivateAbility: (abilityId: string) => {
+        set(state => ({
+          activeAbilities: state.activeAbilities.filter(a => a.ability.id !== abilityId)
+        }));
+        get().updateStats();
       },
       
       unlockStage: (stageId: string) => {
@@ -142,78 +166,82 @@ export const useGameStore = create<GameStore>()(
       
       completeStage: (stageId: string, stars: number) => {
         set(state => ({
-          completedStages: [...new Set([...state.completedStages, stageId])],
-          stageStars: {
-            ...state.stageStars,
-            [stageId]: Math.max(state.stageStars[stageId] || 0, stars)
-          }
+          completedStages: [...new Set([...state.completedStages, stageId])]
         }));
       },
       
       doGacha: (count: number) => {
         const state = get();
-        const cost = getGachaCost(count);
+        const cost = count === 1 ? 50 : count === 10 ? 450 : count * 50;
         
-        if (state.player.gems < cost.gems) {
+        if (state.player.gems < cost) {
           return null;
         }
         
-        const result = performGacha(state.gacha.pitySR, state.gacha.pitySSR, count);
+        const results: Ability[] = [];
+        let currentPityEpic = state.gacha.pityEpic;
+        let currentPityLegendary = state.gacha.pityLegendary;
         
-        for (const card of result.cards) {
-          get().addCard(card);
+        for (let i = 0; i < count; i++) {
+          const roll = rollGacha(currentPityEpic, currentPityLegendary);
+          results.push(roll.ability);
+          currentPityEpic = roll.pityEpic;
+          currentPityLegendary = roll.pityLegendary;
+          get().addAbility(roll.ability);
         }
         
         set(state => ({
           player: {
             ...state.player,
-            gems: state.player.gems - cost.gems
+            gems: state.player.gems - cost
           },
           gacha: {
-            pitySR: result.pitySR,
-            pitySSR: result.pitySSR,
+            pityEpic: currentPityEpic,
+            pityLegendary: currentPityLegendary,
             totalPulls: state.gacha.totalPulls + count
           }
         }));
         
-        return result.cards;
+        return results;
       },
       
-      updateActiveBonds: () => {
+      updateStats: () => {
         const state = get();
-        const deckCards = state.ownedCards.filter(c => state.deck.includes(c.instanceId));
-        const bonds = detectBonds(deckCards);
-        set({ activeBonds: bonds });
-      },
-      
-      getDeckCards: () => {
-        const state = get();
-        return state.ownedCards.filter(c => state.deck.includes(c.instanceId));
-      },
-      
-      getTotalPower: () => {
-        const state = get();
-        const deckCards = state.getDeckCards();
-        return calculateTotalPower(deckCards, state.activeBonds);
+        const result = calculateStats(state.activeAbilities);
+        set({
+          stats: result.stats,
+          conflicts: result.conflicts,
+          synergies: result.synergies,
+          power: calculatePower(result.stats)
+        });
       },
       
       resetGame: () => {
-        set(initialState);
+        const initialCalc = calculateStats([]);
+        set({
+          ...initialState,
+          stats: initialCalc.stats,
+          conflicts: initialCalc.conflicts,
+          synergies: initialCalc.synergies,
+          power: calculatePower(initialCalc.stats)
+        });
       }
     }),
     {
       name: STORAGE_KEY,
       partialize: (state) => ({
         player: state.player,
-        ownedCards: state.ownedCards,
-        deck: state.deck,
+        ownedAbilities: state.ownedAbilities,
+        activeAbilities: state.activeAbilities,
         unlockedStages: state.unlockedStages,
         completedStages: state.completedStages,
-        stageStars: state.stageStars,
         gacha: state.gacha
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.updateStats();
+        }
+      }
     }
   )
 );
-
-useGameStore.getState().updateActiveBonds();
