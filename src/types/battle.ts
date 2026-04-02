@@ -1,5 +1,4 @@
-import type { Stats } from './card';
-import type { ActiveBond } from './bond';
+import type { CalculatedStats } from './ability';
 
 export interface BattleUnit {
   name: string;
@@ -8,7 +7,8 @@ export interface BattleUnit {
   attack: number;
   defense: number;
   speed: number;
-  skills: { name: string; cooldown: number; currentCooldown: number }[];
+  critRate: number;
+  critDamage: number;
 }
 
 export interface BattleLogEntry {
@@ -19,6 +19,7 @@ export interface BattleLogEntry {
   damage?: number;
   heal?: number;
   effect?: string;
+  specialEffect?: string;
 }
 
 export interface BattleState {
@@ -26,18 +27,24 @@ export interface BattleState {
   phase: 'player' | 'enemy' | 'victory' | 'defeat';
   player: BattleUnit;
   enemy: BattleUnit;
-  activeBonds: ActiveBond[];
   logs: BattleLogEntry[];
 }
 
 export interface Enemy {
   id: string;
   name: string;
-  stats: Stats;
-  skills: { name: string; cooldown: number; damage: number }[];
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  critRate: number;
+  critDamage: number;
   description: string;
   rewards: {
     gold: number;
     exp: number;
+    gems: number;
   };
+  specialAbilities?: string[];
+  difficulty: 'easy' | 'normal' | 'hard' | 'nightmare' | 'legendary';
 }

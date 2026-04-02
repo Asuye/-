@@ -1,211 +1,273 @@
-import type { BattleUnit, BattleState, BattleLogEntry } from '@/types/battle';
-import type { Enemy } from '@/types/battle';
-import type { Card, Stats } from '@/types/card';
-import type { ActiveBond } from '@/types/bond';
-import { applyEffects } from './bondCalculator';
+import type { BattleState, BattleLogEntry, BattleUnit, Enemy } from '@/types/battle';
+import type { CalculatedStats, SpecialEffect } from '@/types/ability';
+import { getEffectIcon, getEffectName } from './abilityEngine';
 
-export function createBattleUnitFromCards(cards: Card[], bonds: ActiveBond[]): BattleUnit {
-  if (cards.length === 0) {
-    return {
-      name: '玩家',
-      maxHp: 100,
-      currentHp: 100,
-      attack: 10,
-      defense: 10,
-      speed: 10,
-      skills: [{ name: '普通攻击', cooldown: 1, currentCooldown: 0 }]
-    };
-  }
-  
-  const totalStats: Stats = {
-    attack: 0,
-    defense: 0,
-    hp: 0,
-    speed: 0
-  };
-  
-  for (const card of cards) {
-    totalStats.attack += card.baseStats.attack;
-    totalStats.defense += card.baseStats.defense;
-    totalStats.hp += card.baseStats.hp;
-    totalStats.speed += card.baseStats.speed;
-  }
-  
-  const avgStats: Stats = {
-    attack: Math.floor(totalStats.attack / cards.length),
-    defense: Math.floor(totalStats.defense / cards.length),
-    hp: Math.floor(totalStats.hp / cards.length),
-    speed: Math.floor(totalStats.speed / cards.length)
-  };
-  
-  const effects = bonds.flatMap(b => b.effects);
-  const boostedStats = applyEffects(avgStats, effects);
-  
-  const skills = cards.map(card => ({
-    name: card.skill.name,
-    cooldown: card.skill.cooldown,
-    currentCooldown: 0
-  }));
-  
-  return {
-    name: '玩家',
-    maxHp: boostedStats.hp,
-    currentHp: boostedStats.hp,
-    attack: boostedStats.attack,
-    defense: boostedStats.defense,
-    speed: boostedStats.speed,
-    skills
-  };
-}
-
-export function createBattleUnitFromEnemy(enemy: Enemy): BattleUnit {
-  return {
-    name: enemy.name,
-    maxHp: enemy.stats.hp,
-    currentHp: enemy.stats.hp,
-    attack: enemy.stats.attack,
-    defense: enemy.stats.defense,
-    speed: enemy.stats.speed,
-    skills: enemy.skills.map(s => ({
-      name: s.name,
-      cooldown: s.cooldown,
-      currentCooldown: 0
-    }))
-  };
-}
-
-export function calculateDamage(attacker: BattleUnit, defender: BattleUnit, multiplier: number = 1): number {
-  const baseDamage = attacker.attack * multiplier;
-  const defenseReduction = defender.defense * 0.5;
-  const finalDamage = Math.max(1, Math.floor(baseDamage - defenseReduction));
-  return finalDamage;
-}
-
-export function executePlayerAttack(state: BattleState): BattleState {
-  const newLogs: BattleLogEntry[] = [...state.logs];
-  const newPlayer = { ...state.player };
-  const newEnemy = { ...state.enemy };
-  
-  const damage = calculateDamage(newPlayer, newEnemy);
-  newEnemy.currentHp = Math.max(0, newEnemy.currentHp - damage);
-  
-  newLogs.push({
-    turn: state.turn,
-    actor: newPlayer.name,
-    action: '攻击',
-    target: newEnemy.name,
-    damage
-  });
-  
-  const newPhase = newEnemy.currentHp <= 0 ? 'victory' : 'enemy';
-  
-  return {
-    ...state,
-    player: newPlayer,
-    enemy: newEnemy,
-    logs: newLogs,
-    phase: newPhase
-  };
-}
-
-export function executePlayerSkill(state: BattleState, skillIndex: number): BattleState {
-  const newLogs: BattleLogEntry[] = [...state.logs];
-  const newPlayer = { ...state.player, skills: [...state.player.skills] };
-  const newEnemy = { ...state.enemy };
-  
-  const skill = newPlayer.skills[skillIndex];
-  if (skill.currentCooldown > 0) {
-    return state;
-  }
-  
-  const damage = calculateDamage(newPlayer, newEnemy, 1.5);
-  newEnemy.currentHp = Math.max(0, newEnemy.currentHp - damage);
-  skill.currentCooldown = skill.cooldown;
-  
-  newLogs.push({
-    turn: state.turn,
-    actor: newPlayer.name,
-    action: `使用 ${skill.name}`,
-    target: newEnemy.name,
-    damage
-  });
-  
-  const newPhase = newEnemy.currentHp <= 0 ? 'victory' : 'enemy';
-  
-  return {
-    ...state,
-    player: newPlayer,
-    enemy: newEnemy,
-    logs: newLogs,
-    phase: newPhase
-  };
-}
-
-export function executeEnemyTurn(state: BattleState): BattleState {
-  const newLogs: BattleLogEntry[] = [...state.logs];
-  const newPlayer = { ...state.player };
-  const newEnemy = { ...state.enemy, skills: [...state.enemy.skills] };
-  
-  let availableSkills = newEnemy.skills.filter(s => s.currentCooldown === 0);
-  const useSkill = availableSkills.length > 0 && Math.random() > 0.3;
-  
-  let damage: number;
-  let actionName: string;
-  
-  if (useSkill && availableSkills.length > 0) {
-    const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
-    damage = calculateDamage(newEnemy, newPlayer, 1.3);
-    actionName = skill.name;
-    skill.currentCooldown = skill.cooldown;
-  } else {
-    damage = calculateDamage(newEnemy, newPlayer);
-    actionName = '攻击';
-  }
-  
-  newPlayer.currentHp = Math.max(0, newPlayer.currentHp - damage);
-  
-  newLogs.push({
-    turn: state.turn,
-    actor: newEnemy.name,
-    action: actionName,
-    target: newPlayer.name,
-    damage
-  });
-  
-  const newPhase = newPlayer.currentHp <= 0 ? 'defeat' : 'player';
-  
-  for (const skill of newPlayer.skills) {
-    if (skill.currentCooldown > 0) {
-      skill.currentCooldown--;
-    }
-  }
-  for (const skill of newEnemy.skills) {
-    if (skill.currentCooldown > 0) {
-      skill.currentCooldown--;
-    }
-  }
-  
-  return {
-    ...state,
-    turn: state.turn + 1,
-    player: newPlayer,
-    enemy: newEnemy,
-    logs: newLogs,
-    phase: newPhase
-  };
-}
-
-export function initializeBattle(cards: Card[], bonds: ActiveBond[], enemy: Enemy): BattleState {
+export function createBattleState(playerStats: CalculatedStats, enemy: Enemy): BattleState {
   return {
     turn: 1,
     phase: 'player',
-    player: createBattleUnitFromCards(cards, bonds),
-    enemy: createBattleUnitFromEnemy(enemy),
-    activeBonds: bonds,
-    logs: [{
-      turn: 0,
-      actor: '系统',
-      action: `战斗开始！你遇到了 ${enemy.name}！`
-    }]
+    player: {
+      name: '冒险家',
+      maxHp: playerStats.hp,
+      currentHp: playerStats.hp,
+      attack: playerStats.attack,
+      defense: playerStats.defense,
+      speed: playerStats.speed,
+      critRate: playerStats.critRate,
+      critDamage: playerStats.critDamage
+    },
+    enemy: {
+      name: enemy.name,
+      maxHp: enemy.maxHp,
+      currentHp: enemy.maxHp,
+      attack: enemy.attack,
+      defense: enemy.defense,
+      speed: enemy.speed,
+      critRate: enemy.critRate,
+      critDamage: enemy.critDamage
+    },
+    logs: [
+      {
+        turn: 1,
+        actor: '系统',
+        action: '战斗开始',
+        effect: `你遇到了 ${enemy.name}！`
+      }
+    ]
   };
+}
+
+export function calculateDamage(attacker: BattleUnit, defender: BattleUnit, specialEffects: SpecialEffect[]): { damage: number; isCritical: boolean; effects: string[] } {
+  let damage = attacker.attack;
+  const effects: string[] = [];
+  
+  // 处理破甲效果
+  const pierceEffects = specialEffects.filter(e => e.type === 'pierce');
+  if (pierceEffects.length > 0) {
+    const totalPierce = pierceEffects.reduce((sum, e) => sum + e.value, 0);
+    const defenseReduction = defender.defense * (totalPierce / 100);
+    defender.defense = Math.max(0, defender.defense - defenseReduction);
+    effects.push(`破甲效果：降低防御 ${Math.round(defenseReduction)}`);
+  }
+  
+  // 计算防御
+  const defenseReduction = Math.max(0, defender.defense * 0.5);
+  damage = Math.max(1, damage - defenseReduction);
+  
+  // 计算暴击
+  const isCritical = Math.random() * 100 < attacker.critRate;
+  if (isCritical) {
+    damage = Math.round(damage * (1 + attacker.critDamage / 100));
+    effects.push('暴击！');
+  }
+  
+  return { damage, isCritical, effects };
+}
+
+export function processPlayerTurn(state: BattleState, specialEffects: SpecialEffect[]): BattleState {
+  const newState = { ...state };
+  const logs: BattleLogEntry[] = [...state.logs];
+  
+  // 处理连击效果
+  const doubleStrike = specialEffects.find(e => e.type === 'double_strike');
+  const tripleStrike = specialEffects.find(e => e.type === 'triple_strike');
+  
+  let strikes = 1;
+  if (tripleStrike && Math.random() * 100 < (tripleStrike.chance || 0)) {
+    strikes = 3;
+    logs.push({
+      turn: state.turn,
+      actor: '冒险家',
+      action: '三连击',
+      specialEffect: '触发三连击效果！'
+    });
+  } else if (doubleStrike && Math.random() * 100 < (doubleStrike.chance || 0)) {
+    strikes = 2;
+    logs.push({
+      turn: state.turn,
+      actor: '冒险家',
+      action: '双重打击',
+      specialEffect: '触发双重打击效果！'
+    });
+  }
+  
+  for (let i = 0; i < strikes; i++) {
+    const { damage, isCritical, effects } = calculateDamage(
+      newState.player,
+      newState.enemy,
+      specialEffects
+    );
+    
+    newState.enemy.currentHp = Math.max(0, newState.enemy.currentHp - damage);
+    
+    logs.push({
+      turn: state.turn,
+      actor: '冒险家',
+      action: i > 0 ? `攻击 ${i+1}` : '攻击',
+      target: newState.enemy.name,
+      damage,
+      effect: effects.join(', ')
+    });
+    
+    // 处理吸血效果
+    const lifestealEffects = specialEffects.filter(e => e.type === 'lifesteal');
+    if (lifestealEffects.length > 0 && damage > 0) {
+      const totalLifesteal = lifestealEffects.reduce((sum, e) => sum + e.value, 0);
+      const healAmount = Math.round(damage * (totalLifesteal / 100));
+      newState.player.currentHp = Math.min(newState.player.maxHp, newState.player.currentHp + healAmount);
+      
+      logs.push({
+        turn: state.turn,
+        actor: '冒险家',
+        action: '吸血',
+        heal: healAmount
+      });
+    }
+    
+    // 处理中毒效果
+    const poisonEffects = specialEffects.filter(e => e.type === 'poison');
+    if (poisonEffects.length > 0) {
+      const totalPoison = poisonEffects.reduce((sum, e) => sum + e.value, 0);
+      const poisonDamage = Math.round(newState.enemy.maxHp * (totalPoison / 100));
+      newState.enemy.currentHp = Math.max(0, newState.enemy.currentHp - poisonDamage);
+      
+      logs.push({
+        turn: state.turn,
+        actor: '冒险家',
+        action: '中毒',
+        target: newState.enemy.name,
+        damage: poisonDamage,
+        effect: '中毒伤害'
+      });
+    }
+    
+    // 处理灼烧效果
+    const burnEffects = specialEffects.filter(e => e.type === 'burn');
+    if (burnEffects.length > 0) {
+      const totalBurn = burnEffects.reduce((sum, e) => sum + e.value, 0);
+      const burnDamage = Math.round(newState.enemy.maxHp * (totalBurn / 100));
+      newState.enemy.currentHp = Math.max(0, newState.enemy.currentHp - burnDamage);
+      
+      logs.push({
+        turn: state.turn,
+        actor: '冒险家',
+        action: '灼烧',
+        target: newState.enemy.name,
+        damage: burnDamage,
+        effect: '灼烧伤害'
+      });
+    }
+  }
+  
+  // 检查胜利条件
+  if (newState.enemy.currentHp <= 0) {
+    logs.push({
+      turn: state.turn,
+      actor: '系统',
+      action: '战斗胜利',
+      effect: '你击败了敌人！'
+    });
+    newState.phase = 'victory';
+  } else {
+    newState.phase = 'enemy';
+  }
+  
+  return {
+    ...newState,
+    logs
+  };
+}
+
+export function processEnemyTurn(state: BattleState, specialEffects: SpecialEffect[]): BattleState {
+  const newState = { ...state };
+  const logs: BattleLogEntry[] = [...state.logs];
+  
+  // 处理闪避效果
+  const dodgeEffects = specialEffects.filter(e => e.type === 'dodge');
+  const totalDodge = dodgeEffects.reduce((sum, e) => sum + (e.chance || 0), 0);
+  
+  if (Math.random() * 100 < totalDodge) {
+    logs.push({
+      turn: state.turn,
+      actor: '冒险家',
+      action: '闪避',
+      effect: '成功闪避了敌人的攻击！'
+    });
+  } else {
+    // 敌人攻击
+    const damage = Math.max(1, newState.enemy.attack - newState.player.defense * 0.3);
+    newState.player.currentHp = Math.max(0, newState.player.currentHp - damage);
+    
+    logs.push({
+      turn: state.turn,
+      actor: newState.enemy.name,
+      action: '攻击',
+      target: '冒险家',
+      damage
+    });
+    
+    // 处理反击效果
+    const counterEffects = specialEffects.filter(e => e.type === 'counter');
+    if (counterEffects.length > 0) {
+      const totalCounter = counterEffects.reduce((sum, e) => sum + (e.chance || 0), 0);
+      if (Math.random() * 100 < totalCounter) {
+        const counterDamage = Math.round(damage * 0.5);
+        newState.enemy.currentHp = Math.max(0, newState.enemy.currentHp - counterDamage);
+        
+        logs.push({
+          turn: state.turn,
+          actor: '冒险家',
+          action: '反击',
+          target: newState.enemy.name,
+          damage: counterDamage,
+          effect: '触发反击效果！'
+        });
+      }
+    }
+    
+    // 处理荆棘效果
+    const thornsEffects = specialEffects.filter(e => e.type === 'thorns');
+    if (thornsEffects.length > 0) {
+      const totalThorns = thornsEffects.reduce((sum, e) => sum + e.value, 0);
+      const thornsDamage = Math.round(damage * (totalThorns / 100));
+      newState.enemy.currentHp = Math.max(0, newState.enemy.currentHp - thornsDamage);
+      
+      logs.push({
+        turn: state.turn,
+        actor: '冒险家',
+        action: '荆棘',
+        target: newState.enemy.name,
+        damage: thornsDamage,
+        effect: '荆棘反伤'
+      });
+    }
+  }
+  
+  // 检查失败条件
+  if (newState.player.currentHp <= 0) {
+    logs.push({
+      turn: state.turn,
+      actor: '系统',
+      action: '战斗失败',
+      effect: '你被击败了...'
+    });
+    newState.phase = 'defeat';
+  } else {
+    newState.turn += 1;
+    newState.phase = 'player';
+  }
+  
+  return {
+    ...newState,
+    logs
+  };
+}
+
+export function processBattle(state: BattleState, specialEffects: SpecialEffect[]): BattleState {
+  if (state.phase === 'player') {
+    return processPlayerTurn(state, specialEffects);
+  } else if (state.phase === 'enemy') {
+    return processEnemyTurn(state, specialEffects);
+  }
+  return state;
 }
