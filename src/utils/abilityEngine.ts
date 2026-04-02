@@ -1,4 +1,4 @@
-import type { Ability, PlayerStats, CalculatedStats, ActiveAbility, AbilitySynergy } from '@/types/ability';
+import type { Ability, PlayerStats, CalculatedStats, ActiveAbility, AbilitySynergy, SpecialEffect } from '@/types/ability';
 import { abilityDatabase, synergyDatabase, getAbilityById } from '@/data/abilities';
 
 const baseStats: PlayerStats = {
@@ -21,6 +21,7 @@ export function calculateStats(activeAbilities: ActiveAbility[]): {
   let speed = baseStats.baseSpeed;
   let critRate = baseStats.baseCritRate;
   let critDamage = baseStats.baseCritDamage;
+  const specialEffects: SpecialEffect[] = [];
   
   const conflicts: string[] = [];
   const activeAbilityIds = activeAbilities.map(a => a.ability.id);
@@ -54,11 +55,24 @@ export function calculateStats(activeAbilities: ActiveAbility[]): {
   const percentBoosts: Record<string, number> = {};
   
   for (const effect of allEffects) {
-    if (effect.type !== 'stat_boost' || !effect.stat) continue;
-    if (effect.isPercentage) {
-      percentBoosts[effect.stat] = (percentBoosts[effect.stat] || 0) + effect.value;
-    } else {
-      flatBoosts[effect.stat] = (flatBoosts[effect.stat] || 0) + effect.value;
+    if (effect.type === 'stat_boost' && effect.stat) {
+      if (effect.isPercentage) {
+        percentBoosts[effect.stat] = (percentBoosts[effect.stat] || 0) + (effect.value || 0);
+      } else {
+        flatBoosts[effect.stat] = (flatBoosts[effect.stat] || 0) + (effect.value || 0);
+      }
+    } else if (effect.type === 'special_effect' && effect.specialEffect) {
+      const existingEffect = specialEffects.find(
+        e => e.type === effect.specialEffect!.type
+      );
+      if (existingEffect) {
+        existingEffect.value += effect.specialEffect.value;
+        if (effect.specialEffect.chance && existingEffect.chance) {
+          existingEffect.chance = Math.min(100, existingEffect.chance + effect.specialEffect.chance);
+        }
+      } else {
+        specialEffects.push({ ...effect.specialEffect });
+      }
     }
   }
   
@@ -84,7 +98,8 @@ export function calculateStats(activeAbilities: ActiveAbility[]): {
       hp,
       speed,
       critRate,
-      critDamage
+      critDamage,
+      specialEffects
     },
     conflicts,
     synergies: activeSynergies
@@ -92,7 +107,7 @@ export function calculateStats(activeAbilities: ActiveAbility[]): {
 }
 
 export function calculatePower(stats: CalculatedStats): number {
-  return Math.floor(
+  let power = Math.floor(
     stats.attack * 2 +
     stats.defense * 1.5 +
     stats.hp / 10 +
@@ -100,6 +115,63 @@ export function calculatePower(stats: CalculatedStats): number {
     stats.critRate * 2 +
     stats.critDamage
   );
+  
+  for (const effect of stats.specialEffects) {
+    switch (effect.type) {
+      case 'double_strike':
+        power += (effect.chance || 0) * 2;
+        break;
+      case 'triple_strike':
+        power += (effect.chance || 0) * 3;
+        break;
+      case 'lifesteal':
+        power += effect.value * 3;
+        break;
+      case 'dodge':
+        power += (effect.chance || 0) * 2;
+        break;
+      case 'counter':
+        power += (effect.chance || 0) * 1.5;
+        break;
+      case 'pierce':
+        power += effect.value * 1.5;
+        break;
+      case 'poison':
+      case 'burn':
+      case 'freeze':
+        power += effect.value * 2;
+        break;
+      case 'shield':
+        power += effect.value * 3;
+        break;
+      case 'heal_over_time':
+        power += effect.value * 4;
+        break;
+      case 'damage_reduction':
+        power += effect.value * 2;
+        break;
+      case 'reflect':
+      case 'thorns':
+        power += effect.value * 1.5;
+        break;
+      case 'speed_burst':
+      case 'power_surge':
+        power += effect.value * 2;
+        break;
+      case 'critical_bonus':
+        power += effect.value;
+        break;
+      case 'execute':
+        power += effect.value * 3;
+        break;
+      case 'cleave':
+      case 'splash':
+        power += effect.value * 2;
+        break;
+    }
+  }
+  
+  return power;
 }
 
 export function rollGacha(pityEpic: number, pityLegendary: number): {
@@ -147,4 +219,56 @@ export function rollGacha(pityEpic: number, pityLegendary: number): {
   }
   
   return { ability, pityEpic: currentPityEpic, pityLegendary: currentPityLegendary };
+}
+
+export function getEffectIcon(type: string): string {
+  const icons: Record<string, string> = {
+    double_strike: '⚔️',
+    triple_strike: '⚔️⚔️',
+    lifesteal: '💉',
+    dodge: '💨',
+    counter: '↩️',
+    pierce: '🔱',
+    poison: '☠️',
+    burn: '🔥',
+    freeze: '❄️',
+    shield: '🛡️',
+    heal_over_time: '💚',
+    damage_reduction: '⛓️',
+    reflect: '🔙',
+    thorns: '🌵',
+    speed_burst: '⚡',
+    power_surge: '💥',
+    critical_bonus: '💢',
+    execute: '💀',
+    cleave: '🗡️',
+    splash: '💦'
+  };
+  return icons[type] || '✨';
+}
+
+export function getEffectName(type: string): string {
+  const names: Record<string, string> = {
+    double_strike: '双重打击',
+    triple_strike: '三连击',
+    lifesteal: '吸血',
+    dodge: '闪避',
+    counter: '反击',
+    pierce: '破甲',
+    poison: '中毒',
+    burn: '灼烧',
+    freeze: '冰冻',
+    shield: '护盾',
+    heal_over_time: '再生',
+    damage_reduction: '减伤',
+    reflect: '反射',
+    thorns: '荆棘',
+    speed_burst: '疾风',
+    power_surge: '狂暴',
+    critical_bonus: '暴击强化',
+    execute: '斩杀',
+    cleave: '横扫',
+    splash: '溅射'
+  };
+  return names[type] || '特殊效果';
 }

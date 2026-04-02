@@ -3,329 +3,604 @@ import type { Ability, AbilitySynergy } from '@/types/ability';
 export const abilityDatabase: Ability[] = [
   {
     id: 'ability_001',
-    name: '猛击',
+    name: '双重打击',
     rarity: 'common',
     category: 'attack',
-    description: '攻击力+20',
+    description: '30%几率进行两次攻击',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 20, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'double_strike',
+          chance: 30,
+          value: 2,
+          description: '30%几率进行两次攻击'
+        }
+      }
     ],
-    tags: ['attack', 'simple'],
-    conflictsWith: [],
-    synergizesWith: ['ability_002', 'ability_005']
+    tags: ['attack', 'strike'],
+    conflictsWith: ['ability_002'],
+    synergizesWith: ['ability_005', 'ability_006']
   },
   {
     id: 'ability_002',
-    name: '重击',
+    name: '三连击',
     rarity: 'rare',
     category: 'attack',
-    description: '攻击力+40',
+    description: '20%几率进行三次攻击',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 40, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'triple_strike',
+          chance: 20,
+          value: 3,
+          description: '20%几率进行三次攻击'
+        }
+      }
     ],
-    tags: ['attack', 'simple'],
-    conflictsWith: ['ability_003'],
-    synergizesWith: ['ability_001', 'ability_004']
+    tags: ['attack', 'strike'],
+    conflictsWith: ['ability_001'],
+    synergizesWith: ['ability_005', 'ability_006']
   },
   {
     id: 'ability_003',
-    name: '精准打击',
-    rarity: 'epic',
+    name: '吸血打击',
+    rarity: 'common',
     category: 'attack',
-    description: '攻击力+15，暴击率+30%',
+    description: '攻击时回复15%伤害的生命',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 15, isPercentage: false },
-      { type: 'stat_boost', stat: 'crit_rate', value: 30, isPercentage: true }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'lifesteal',
+          value: 15,
+          description: '攻击时回复15%伤害的生命'
+        }
+      }
     ],
-    tags: ['attack', 'crit'],
-    conflictsWith: ['ability_002', 'ability_006'],
-    synergizesWith: ['ability_004', 'ability_008']
+    tags: ['attack', 'heal'],
+    conflictsWith: [],
+    synergizesWith: ['ability_001', 'ability_002']
   },
   {
     id: 'ability_004',
-    name: '暴击强化',
+    name: '血之渴望',
+    rarity: 'epic',
+    category: 'attack',
+    description: '攻击时回复30%伤害的生命',
+    effects: [
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'lifesteal',
+          value: 30,
+          description: '攻击时回复30%伤害的生命'
+        }
+      }
+    ],
+    tags: ['attack', 'heal'],
+    conflictsWith: [],
+    synergizesWith: ['ability_001', 'ability_002']
+  },
+  {
+    id: 'ability_005',
+    name: '致命弱点',
     rarity: 'common',
     category: 'attack',
     description: '暴击伤害+50%',
     effects: [
-      { type: 'stat_boost', stat: 'crit_damage', value: 50, isPercentage: true }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'critical_bonus',
+          value: 50,
+          description: '暴击伤害+50%'
+        }
+      }
     ],
     tags: ['attack', 'crit'],
     conflictsWith: [],
-    synergizesWith: ['ability_003', 'ability_005']
-  },
-  {
-    id: 'ability_005',
-    name: '狂暴',
-    rarity: 'legendary',
-    category: 'attack',
-    description: '攻击力+100，防御力-50',
-    effects: [
-      { type: 'stat_boost', stat: 'attack', value: 100, isPercentage: false },
-      { type: 'stat_boost', stat: 'defense', value: -50, isPercentage: true }
-    ],
-    tags: ['attack', 'risky'],
-    conflictsWith: ['ability_007', 'ability_008'],
-    synergizesWith: ['ability_004', 'ability_009']
+    synergizesWith: ['ability_001', 'ability_002', 'ability_006']
   },
   {
     id: 'ability_006',
-    name: '稳扎稳打',
-    rarity: 'common',
+    name: '精准狙击',
+    rarity: 'rare',
     category: 'attack',
-    description: '攻击力+10，暴击率+5%，暴击伤害+20%',
+    description: '暴击率+25%，暴击伤害+75%',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 10, isPercentage: false },
-      { type: 'stat_boost', stat: 'crit_rate', value: 5, isPercentage: true },
-      { type: 'stat_boost', stat: 'crit_damage', value: 20, isPercentage: true }
+      {
+        type: 'stat_boost',
+        stat: 'crit_rate',
+        value: 25,
+        isPercentage: true
+      },
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'critical_bonus',
+          value: 75,
+          description: '暴击伤害+75%'
+        }
+      }
     ],
-    tags: ['attack', 'balanced'],
-    conflictsWith: ['ability_003'],
-    synergizesWith: ['ability_001', 'ability_007']
+    tags: ['attack', 'crit'],
+    conflictsWith: [],
+    synergizesWith: ['ability_001', 'ability_002']
   },
   {
     id: 'ability_007',
-    name: '铁壁',
-    rarity: 'rare',
-    category: 'defense',
-    description: '防御力+50',
+    name: '破甲之刃',
+    rarity: 'common',
+    category: 'attack',
+    description: '攻击无视30%防御',
     effects: [
-      { type: 'stat_boost', stat: 'defense', value: 50, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'pierce',
+          value: 30,
+          description: '攻击无视30%防御'
+        }
+      }
     ],
-    tags: ['defense', 'simple'],
-    conflictsWith: ['ability_005'],
-    synergizesWith: ['ability_008', 'ability_010']
+    tags: ['attack', 'pierce'],
+    conflictsWith: [],
+    synergizesWith: ['ability_001', 'ability_002']
   },
   {
     id: 'ability_008',
-    name: '不屈',
+    name: '贯穿之枪',
     rarity: 'epic',
-    category: 'defense',
-    description: '生命值+200，防御力+20',
+    category: 'attack',
+    description: '攻击无视60%防御',
     effects: [
-      { type: 'stat_boost', stat: 'hp', value: 200, isPercentage: false },
-      { type: 'stat_boost', stat: 'defense', value: 20, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'pierce',
+          value: 60,
+          description: '攻击无视60%防御'
+        }
+      }
     ],
-    tags: ['defense', 'hp'],
-    conflictsWith: ['ability_005'],
-    synergizesWith: ['ability_007', 'ability_009']
+    tags: ['attack', 'pierce'],
+    conflictsWith: [],
+    synergizesWith: ['ability_001', 'ability_002']
   },
   {
     id: 'ability_009',
-    name: '再生',
+    name: '毒素之刃',
     rarity: 'common',
-    category: 'defense',
-    description: '生命值+100',
+    category: 'attack',
+    description: '攻击附加中毒，每回合造成10%伤害',
     effects: [
-      { type: 'stat_boost', stat: 'hp', value: 100, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'poison',
+          value: 10,
+          description: '攻击附加中毒，每回合造成10%伤害'
+        }
+      }
     ],
-    tags: ['defense', 'hp'],
-    conflictsWith: [],
-    synergizesWith: ['ability_008', 'ability_010']
+    tags: ['attack', 'dot'],
+    conflictsWith: ['ability_010', 'ability_011'],
+    synergizesWith: ['ability_007', 'ability_008']
   },
   {
     id: 'ability_010',
-    name: '钢躯',
-    rarity: 'legendary',
-    category: 'defense',
-    description: '防御力+80，攻击力-30',
+    name: '烈焰之怒',
+    rarity: 'rare',
+    category: 'attack',
+    description: '攻击附加灼烧，每回合造成15%伤害',
     effects: [
-      { type: 'stat_boost', stat: 'defense', value: 80, isPercentage: false },
-      { type: 'stat_boost', stat: 'attack', value: -30, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'burn',
+          value: 15,
+          description: '攻击附加灼烧，每回合造成15%伤害'
+        }
+      }
     ],
-    tags: ['defense', 'risky'],
-    conflictsWith: ['ability_005'],
-    synergizesWith: ['ability_007', 'ability_009']
+    tags: ['attack', 'dot'],
+    conflictsWith: ['ability_009', 'ability_011'],
+    synergizesWith: ['ability_007', 'ability_008']
   },
   {
     id: 'ability_011',
-    name: '疾风',
-    rarity: 'common',
-    category: 'utility',
-    description: '速度+15',
+    name: '冰封之触',
+    rarity: 'epic',
+    category: 'attack',
+    description: '攻击附加冰冻，降低敌人速度30%',
     effects: [
-      { type: 'stat_boost', stat: 'speed', value: 15, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'freeze',
+          value: 30,
+          description: '攻击附加冰冻，降低敌人速度30%'
+        }
+      }
     ],
-    tags: ['utility', 'speed'],
-    conflictsWith: [],
-    synergizesWith: ['ability_012', 'ability_014']
+    tags: ['attack', 'control'],
+    conflictsWith: ['ability_009', 'ability_010'],
+    synergizesWith: ['ability_007', 'ability_008']
   },
   {
     id: 'ability_012',
-    name: '迅雷',
-    rarity: 'rare',
-    category: 'utility',
-    description: '速度+30，暴击率+10%',
+    name: '斩杀者',
+    rarity: 'legendary',
+    category: 'attack',
+    description: '敌人生命值低于30%时，伤害翻倍',
     effects: [
-      { type: 'stat_boost', stat: 'speed', value: 30, isPercentage: false },
-      { type: 'stat_boost', stat: 'crit_rate', value: 10, isPercentage: true }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'execute',
+          value: 30,
+          description: '敌人生命值低于30%时，伤害翻倍'
+        }
+      }
     ],
-    tags: ['utility', 'speed', 'crit'],
+    tags: ['attack', 'finish'],
     conflictsWith: [],
-    synergizesWith: ['ability_011', 'ability_003']
+    synergizesWith: ['ability_002', 'ability_006']
   },
   {
     id: 'ability_013',
-    name: '敏捷',
-    rarity: 'epic',
-    category: 'utility',
-    description: '速度+40，暴击率+15%，暴击伤害+25%',
+    name: '闪电反应',
+    rarity: 'common',
+    category: 'defense',
+    description: '20%几率闪避攻击',
     effects: [
-      { type: 'stat_boost', stat: 'speed', value: 40, isPercentage: false },
-      { type: 'stat_boost', stat: 'crit_rate', value: 15, isPercentage: true },
-      { type: 'stat_boost', stat: 'crit_damage', value: 25, isPercentage: true }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'dodge',
+          chance: 20,
+          value: 1,
+          description: '20%几率闪避攻击'
+        }
+      }
     ],
-    tags: ['utility', 'speed', 'crit'],
-    conflictsWith: ['ability_016'],
-    synergizesWith: ['ability_003', 'ability_004']
+    tags: ['defense', 'dodge'],
+    conflictsWith: [],
+    synergizesWith: ['ability_014', 'ability_015']
   },
   {
     id: 'ability_014',
-    name: '先见',
-    rarity: 'common',
-    category: 'utility',
-    description: '速度+10，防御力+10',
+    name: '幻影步',
+    rarity: 'rare',
+    category: 'defense',
+    description: '35%几率闪避攻击',
     effects: [
-      { type: 'stat_boost', stat: 'speed', value: 10, isPercentage: false },
-      { type: 'stat_boost', stat: 'defense', value: 10, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'dodge',
+          chance: 35,
+          value: 1,
+          description: '35%几率闪避攻击'
+        }
+      }
     ],
-    tags: ['utility', 'speed', 'defense'],
+    tags: ['defense', 'dodge'],
     conflictsWith: [],
-    synergizesWith: ['ability_011', 'ability_007']
+    synergizesWith: ['ability_013', 'ability_015']
   },
   {
     id: 'ability_015',
-    name: '神速',
-    rarity: 'legendary',
-    category: 'utility',
-    description: '速度+100，生命值-100',
+    name: '铁壁守护',
+    rarity: 'common',
+    category: 'defense',
+    description: '受到伤害减少20%',
     effects: [
-      { type: 'stat_boost', stat: 'speed', value: 100, isPercentage: false },
-      { type: 'stat_boost', stat: 'hp', value: -100, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'damage_reduction',
+          value: 20,
+          description: '受到伤害减少20%'
+        }
+      }
     ],
-    tags: ['utility', 'speed', 'risky'],
-    conflictsWith: ['ability_008', 'ability_010'],
-    synergizesWith: ['ability_012', 'ability_013']
+    tags: ['defense', 'tank'],
+    conflictsWith: [],
+    synergizesWith: ['ability_016', 'ability_017']
   },
   {
     id: 'ability_016',
-    name: '全能',
-    rarity: 'common',
-    category: 'special',
-    description: '全属性+5',
+    name: '钢铁堡垒',
+    rarity: 'epic',
+    category: 'defense',
+    description: '受到伤害减少40%',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 5, isPercentage: false },
-      { type: 'stat_boost', stat: 'defense', value: 5, isPercentage: false },
-      { type: 'stat_boost', stat: 'hp', value: 50, isPercentage: false },
-      { type: 'stat_boost', stat: 'speed', value: 5, isPercentage: false },
-      { type: 'stat_boost', stat: 'crit_rate', value: 3, isPercentage: true },
-      { type: 'stat_boost', stat: 'crit_damage', value: 5, isPercentage: true }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'damage_reduction',
+          value: 40,
+          description: '受到伤害减少40%'
+        }
+      }
     ],
-    tags: ['special', 'balanced'],
-    conflictsWith: ['ability_013'],
-    synergizesWith: ['ability_006', 'ability_014']
+    tags: ['defense', 'tank'],
+    conflictsWith: [],
+    synergizesWith: ['ability_015', 'ability_017']
   },
   {
     id: 'ability_017',
-    name: '赌徒',
-    rarity: 'rare',
-    category: 'special',
-    description: '暴击率+25%，暴击伤害+25%，攻击力-20',
+    name: '魔法护盾',
+    rarity: 'common',
+    category: 'defense',
+    description: '每3回合获得一个护盾，吸收最大生命值15%的伤害',
     effects: [
-      { type: 'stat_boost', stat: 'crit_rate', value: 25, isPercentage: true },
-      { type: 'stat_boost', stat: 'crit_damage', value: 25, isPercentage: true },
-      { type: 'stat_boost', stat: 'attack', value: -20, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'shield',
+          value: 15,
+          description: '每3回合获得一个护盾，吸收最大生命值15%的伤害'
+        }
+      }
     ],
-    tags: ['special', 'crit', 'risky'],
+    tags: ['defense', 'shield'],
     conflictsWith: [],
-    synergizesWith: ['ability_003', 'ability_004']
+    synergizesWith: ['ability_015', 'ability_016']
   },
   {
     id: 'ability_018',
-    name: '背水一战',
-    rarity: 'epic',
-    category: 'special',
-    description: '攻击力+80，防御力-40，生命值-150',
+    name: '反击之怒',
+    rarity: 'rare',
+    category: 'defense',
+    description: '受到攻击时，50%几率反击造成30%伤害',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 80, isPercentage: false },
-      { type: 'stat_boost', stat: 'defense', value: -40, isPercentage: true },
-      { type: 'stat_boost', stat: 'hp', value: -150, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'counter',
+          chance: 50,
+          value: 30,
+          description: '受到攻击时，50%几率反击造成30%伤害'
+        }
+      }
     ],
-    tags: ['special', 'risky', 'attack'],
-    conflictsWith: ['ability_005', 'ability_010'],
-    synergizesWith: ['ability_004', 'ability_017']
+    tags: ['defense', 'counter'],
+    conflictsWith: ['ability_019'],
+    synergizesWith: ['ability_015', 'ability_016']
   },
   {
     id: 'ability_019',
-    name: '均衡之道',
-    rarity: 'common',
-    category: 'special',
-    description: '攻击力+15，防御力+15，生命值+100',
+    name: '荆棘护甲',
+    rarity: 'epic',
+    category: 'defense',
+    description: '受到攻击时，反弹25%伤害给攻击者',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 15, isPercentage: false },
-      { type: 'stat_boost', stat: 'defense', value: 15, isPercentage: false },
-      { type: 'stat_boost', stat: 'hp', value: 100, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'thorns',
+          value: 25,
+          description: '受到攻击时，反弹25%伤害给攻击者'
+        }
+      }
     ],
-    tags: ['special', 'balanced'],
-    conflictsWith: [],
-    synergizesWith: ['ability_006', 'ability_016']
+    tags: ['defense', 'thorns'],
+    conflictsWith: ['ability_018'],
+    synergizesWith: ['ability_015', 'ability_016']
   },
   {
     id: 'ability_020',
-    name: '孤注一掷',
+    name: '不死之身',
     rarity: 'legendary',
-    category: 'special',
-    description: '攻击力+150，暴击率+50%，暴击伤害+100%，防御力-80，生命值-300，速度-50',
+    category: 'defense',
+    description: '受到致命伤害时，有一次机会保留1点生命',
     effects: [
-      { type: 'stat_boost', stat: 'attack', value: 150, isPercentage: false },
-      { type: 'stat_boost', stat: 'crit_rate', value: 50, isPercentage: true },
-      { type: 'stat_boost', stat: 'crit_damage', value: 100, isPercentage: true },
-      { type: 'stat_boost', stat: 'defense', value: -80, isPercentage: true },
-      { type: 'stat_boost', stat: 'hp', value: -300, isPercentage: false },
-      { type: 'stat_boost', stat: 'speed', value: -50, isPercentage: false }
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'heal_over_time',
+          value: 1,
+          description: '受到致命伤害时，有一次机会保留1点生命'
+        }
+      }
     ],
-    tags: ['special', 'risky', 'extreme'],
-    conflictsWith: ['ability_005', 'ability_010', 'ability_015', 'ability_018'],
-    synergizesWith: ['ability_004', 'ability_017']
+    tags: ['defense', 'survive'],
+    conflictsWith: [],
+    synergizesWith: ['ability_016', 'ability_017']
+  },
+  {
+    id: 'ability_021',
+    name: '疾风步',
+    rarity: 'common',
+    category: 'utility',
+    description: '速度+30%，闪避+10%',
+    effects: [
+      {
+        type: 'stat_boost',
+        stat: 'speed',
+        value: 30,
+        isPercentage: true
+      },
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'dodge',
+          chance: 10,
+          value: 1,
+          description: '闪避+10%'
+        }
+      }
+    ],
+    tags: ['utility', 'speed'],
+    conflictsWith: [],
+    synergizesWith: ['ability_013', 'ability_014']
+  },
+  {
+    id: 'ability_022',
+    name: '狂暴冲锋',
+    rarity: 'rare',
+    category: 'utility',
+    description: '每回合开始时，攻击力+10%（最多+50%）',
+    effects: [
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'power_surge',
+          value: 10,
+          description: '每回合开始时，攻击力+10%（最多+50%）'
+        }
+      }
+    ],
+    tags: ['utility', 'buff'],
+    conflictsWith: [],
+    synergizesWith: ['ability_001', 'ability_002']
+  },
+  {
+    id: 'ability_023',
+    name: '分裂攻击',
+    rarity: 'rare',
+    category: 'attack',
+    description: '攻击时对相邻敌人造成50%溅射伤害',
+    effects: [
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'splash',
+          value: 50,
+          description: '攻击时对相邻敌人造成50%溅射伤害'
+        }
+      }
+    ],
+    tags: ['attack', 'aoe'],
+    conflictsWith: ['ability_024'],
+    synergizesWith: ['ability_001', 'ability_002']
+  },
+  {
+    id: 'ability_024',
+    name: '横扫千军',
+    rarity: 'epic',
+    category: 'attack',
+    description: '攻击时对所有敌人造成30%伤害',
+    effects: [
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'cleave',
+          value: 30,
+          description: '攻击时对所有敌人造成30%伤害'
+        }
+      }
+    ],
+    tags: ['attack', 'aoe'],
+    conflictsWith: ['ability_023'],
+    synergizesWith: ['ability_001', 'ability_002']
+  },
+  {
+    id: 'ability_025',
+    name: '神击',
+    rarity: 'legendary',
+    category: 'attack',
+    description: '15%几率触发，造成3倍伤害并眩晕敌人',
+    effects: [
+      {
+        type: 'special_effect',
+        specialEffect: {
+          type: 'power_surge',
+          chance: 15,
+          value: 300,
+          description: '15%几率触发，造成3倍伤害并眩晕敌人'
+        }
+      }
+    ],
+    tags: ['attack', 'ultimate'],
+    conflictsWith: [],
+    synergizesWith: ['ability_002', 'ability_006']
   }
 ];
 
 export const synergyDatabase: AbilitySynergy[] = [
   {
-    name: '暴击组合',
-    description: '精准打击+暴击强化：暴击伤害额外+30%',
-    abilities: ['ability_003', 'ability_004'],
-    effect: { type: 'stat_boost', stat: 'crit_damage', value: 30, isPercentage: true }
+    name: '连击大师',
+    description: '双重打击+致命弱点：连击时暴击率额外+30%',
+    abilities: ['ability_001', 'ability_005'],
+    effect: {
+      type: 'special_effect',
+      specialEffect: {
+        type: 'critical_bonus',
+        value: 30,
+        description: '连击时暴击率额外+30%'
+      }
+    }
   },
   {
-    name: '钢铁堡垒',
-    description: '铁壁+不屈+再生：防御力额外+40，生命值额外+150',
-    abilities: ['ability_007', 'ability_008', 'ability_009'],
-    effect: { type: 'stat_boost', stat: 'defense', value: 40, isPercentage: false }
+    name: '血之狂暴',
+    description: '吸血打击+双重打击：连击时吸血效果翻倍',
+    abilities: ['ability_001', 'ability_003'],
+    effect: {
+      type: 'special_effect',
+      specialEffect: {
+        type: 'lifesteal',
+        value: 30,
+        description: '连击时吸血效果翻倍'
+      }
+    }
   },
   {
-    name: '致命疾风',
-    description: '迅雷+敏捷：速度额外+30，暴击率额外+15%',
-    abilities: ['ability_012', 'ability_013'],
-    effect: { type: 'stat_boost', stat: 'speed', value: 30, isPercentage: false }
+    name: '钢铁幻影',
+    description: '闪电反应+铁壁守护：闪避成功时，下次受到伤害减少50%',
+    abilities: ['ability_013', 'ability_015'],
+    effect: {
+      type: 'special_effect',
+      specialEffect: {
+        type: 'damage_reduction',
+        value: 50,
+        description: '闪避成功时，下次受到伤害减少50%'
+      }
+    }
   },
   {
-    name: '赌徒的胜利',
-    description: '赌徒+孤注一掷：虽然风险极高，但攻击力额外+50',
-    abilities: ['ability_017', 'ability_020'],
-    effect: { type: 'stat_boost', stat: 'attack', value: 50, isPercentage: false }
+    name: '致命毒刃',
+    description: '毒素之刃+破甲之刃：中毒伤害无视防御',
+    abilities: ['ability_009', 'ability_007'],
+    effect: {
+      type: 'special_effect',
+      specialEffect: {
+        type: 'pierce',
+        value: 100,
+        description: '中毒伤害无视防御'
+      }
+    }
   },
   {
-    name: '稳定输出',
-    description: '稳扎稳打+均衡之道+全能：全属性额外+10',
-    abilities: ['ability_006', 'ability_016', 'ability_019'],
-    effect: { type: 'stat_boost', stat: 'attack', value: 10, isPercentage: false }
+    name: '无双战神',
+    description: '三连击+斩杀者：敌人低血量时必定三连击',
+    abilities: ['ability_002', 'ability_012'],
+    effect: {
+      type: 'special_effect',
+      specialEffect: {
+        type: 'double_strike',
+        chance: 100,
+        value: 3,
+        description: '敌人低血量时必定三连击'
+      }
+    }
   },
   {
-    name: '以命相搏',
-    description: '狂暴+背水一战：攻击力额外+80，但防御力额外-20%',
-    abilities: ['ability_005', 'ability_018'],
-    effect: { type: 'stat_boost', stat: 'attack', value: 80, isPercentage: false }
+    name: '不死狂战',
+    description: '狂暴冲锋+不死之身：濒死时攻击力翻倍',
+    abilities: ['ability_022', 'ability_020'],
+    effect: {
+      type: 'special_effect',
+      specialEffect: {
+        type: 'power_surge',
+        value: 100,
+        description: '濒死时攻击力翻倍'
+      }
+    }
   }
 ];
 

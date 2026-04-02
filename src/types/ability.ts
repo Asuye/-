@@ -1,12 +1,41 @@
 export type AbilityRarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type AbilityCategory = 'attack' | 'defense' | 'utility' | 'special';
 
-export interface AbilityEffect {
-  type: 'stat_boost' | 'skill_mod' | 'special' | 'conditional';
-  stat?: 'attack' | 'defense' | 'hp' | 'speed' | 'crit_rate' | 'crit_damage';
+export type SpecialEffectType =
+  | 'double_strike'
+  | 'triple_strike'
+  | 'lifesteal'
+  | 'dodge'
+  | 'counter'
+  | 'pierce'
+  | 'poison'
+  | 'burn'
+  | 'freeze'
+  | 'shield'
+  | 'heal_over_time'
+  | 'damage_reduction'
+  | 'reflect'
+  | 'thorns'
+  | 'speed_burst'
+  | 'power_surge'
+  | 'critical_bonus'
+  | 'execute'
+  | 'cleave'
+  | 'splash';
+
+export interface SpecialEffect {
+  type: SpecialEffectType;
   value: number;
-  isPercentage: boolean;
-  condition?: string;
+  chance?: number;
+  description: string;
+}
+
+export interface AbilityEffect {
+  type: 'stat_boost' | 'special_effect';
+  stat?: 'attack' | 'defense' | 'hp' | 'speed' | 'crit_rate' | 'crit_damage';
+  value?: number;
+  isPercentage?: boolean;
+  specialEffect?: SpecialEffect;
 }
 
 export interface Ability {
@@ -42,6 +71,7 @@ export interface CalculatedStats extends PlayerStats {
   speed: number;
   critRate: number;
   critDamage: number;
+  specialEffects: SpecialEffect[];
 }
 
 export interface AbilitySynergy {

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 import type { Ability, AbilityRarity, AbilityCategory } from '@/types/ability';
 import { Sword, Shield, Sparkles, Flame, Zap, AlertTriangle } from 'lucide-react';
+import { getEffectIcon, getEffectName } from '@/utils/abilityEngine';
 
 const rarityColors: Record<AbilityRarity, { bg: string; border: string; glow: string; text: string }> = {
   common: { bg: 'from-gray-600 to-gray-700', border: 'border-gray-500', glow: '', text: 'text-gray-300' },
@@ -58,6 +59,8 @@ export function AbilityDisplay({
   
   const isRisky = ability.tags.includes('risky') || ability.tags.includes('extreme');
   
+  const specialEffects = ability.effects.filter(e => e.type === 'special_effect' && e.specialEffect);
+  
   return (
     <motion.div
       whileHover={{ scale: 1.03, y: -3 }}
@@ -100,6 +103,20 @@ export function AbilityDisplay({
       </div>
       
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+        {specialEffects.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {specialEffects.slice(0, 3).map((effect, idx) => (
+              <span 
+                key={idx}
+                className="text-lg"
+                title={effect.specialEffect?.description}
+              >
+                {getEffectIcon(effect.specialEffect?.type || '')}
+              </span>
+            ))}
+          </div>
+        )}
+        
         <p className={clsx(
           'text-gray-200 leading-tight',
           size === 'sm' ? 'text-xs' : 'text-sm'
@@ -150,11 +167,18 @@ export function AbilityDetailModal({
       crit_damage: '暴击伤害'
     };
     
-    if (effect.stat) {
+    if (effect.type === 'stat_boost' && effect.stat) {
       const name = statNames[effect.stat] || effect.stat;
       const sign = effect.value >= 0 ? '+' : '';
       const percent = effect.isPercentage ? '%' : '';
       return `${name} ${sign}${effect.value}${percent}`;
+    } else if (effect.type === 'special_effect' && effect.specialEffect) {
+      const special = effect.specialEffect;
+      let text = `${getEffectIcon(special.type)} ${getEffectName(special.type)}`;
+      if (special.chance) {
+        text += ` (${special.chance}%几率)`;
+      }
+      return text;
     }
     return '';
   };
@@ -210,16 +234,16 @@ export function AbilityDetailModal({
         
         <div className="bg-black/30 rounded-lg p-4 mb-4">
           <h4 className="text-sm font-bold text-white mb-2">效果详情：</h4>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {ability.effects.map((effect, index) => (
               <div 
                 key={index} 
-                className={clsx(
-                  'text-sm',
-                  effect.value >= 0 ? 'text-green-300' : 'text-red-300'
-                )}
+                className="text-sm text-green-300"
               >
                 {effectText(effect)}
+                {effect.specialEffect && (
+                  <p className="text-xs text-gray-300 mt-1">{effect.specialEffect.description}</p>
+                )}
               </div>
             ))}
           </div>
